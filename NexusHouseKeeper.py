@@ -10,6 +10,7 @@ from hurry.filesize import size
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 
+
 class NexusHouseKeeper:
     cred = None
     nexus_url = None
@@ -36,12 +37,12 @@ class NexusHouseKeeper:
         response.raise_for_status()
         return response
 
-    def _search_components(self,token=None,name=None,group=None,version=None):
+    def _search_components(self, token=None, name=None, group=None, version=None):
         params = {'repository': self.repository}
         if token:
             params['continuationToken'] = token
         if name:
-            params['maven.artifactId']=name
+            params['maven.artifactId'] = name
         if group:
             params['maven.groupId'] = group
         if version:
@@ -49,108 +50,115 @@ class NexusHouseKeeper:
         response = requests.get(self.nexus_url + "v1/search", auth=self.cred,
                                 params=params, headers={'accept': 'application/json'})
         response.raise_for_status()
-        print(response.json())
         return response
 
-    def _get_components_as_list(self,fun,**args) -> list:
+    def _get_components_as_list(self, fun, **args) -> list:
         response = fun(**args)
-        i=1
         components = self._fill_tmp_array_from_json(response.json())
         while 'continuationToken' in response.json() and response.json()['continuationToken']:
-            response = fun(token=response.json()['continuationToken'],**args)
+            response = fun(token=response.json()['continuationToken'], **args)
             components += (self._fill_tmp_array_from_json(response.json()))
-            i=i+1
-        print(str(i)+" queries")
         return components
 
     def show_all_components(self) -> None:
         components = self._get_components_as_list(self._get_all_components)
         aggregates = {}
-        regex = re.compile("^(.*)-"+self.date_pattern+"-?\d*")
+        regex = re.compile("^(.*)-" + self.date_pattern + "-?\d*")
         total_size = 0
         for x in components:
             comp_size = self._components_size(x)
             total_size += comp_size
-            key = x["group"]+":"+x["name"]
+            key = x["group"] + ":" + x["name"]
             match = regex.match(x["version"])
-            #Check if snapshot
-            version = "[bold]"+match.group(1)+"[/bold]"
+            # Check if snapshot
+            version = "[bold]" + match.group(1) + "[/bold]"
             if match.group(2):
-                version+="-SNAPSHOT"
+                version += "-SNAPSHOT"
             if key in aggregates:
-                aggregates[key].add(version+" ["+size(comp_size)+"]")
+                aggregates[key].add(version + " [" + size(comp_size) + "]")
             else:
-                aggregates[key]=set()
-                aggregates[key].add(version+" ["+size(comp_size)+"]")
+                aggregates[key] = set()
+                aggregates[key].add(version + " [" + size(comp_size) + "]")
 
         console = Console()
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Name", style="dim")
         table.add_column("Versions")
-        for k,v in aggregates.items():
-            table.add_row(k,", ".join(v))
+        for k, v in aggregates.items():
+            table.add_row(k, ", ".join(v))
         console.print(table)
-        console.print("Total size : "+size(total_size))
+        console.print("Total size : " + size(total_size))
 
     def _fill_tmp_array_from_json(self, json) -> list:
         components = []
         for item in json['items']:
-            #print(item)
-            components.append({'name': item['name'], 'version': item['version'], 'id': item['id'],'group':item['group'],'assets':item['assets']})
+            # print(item)
+            components.append(
+                {'name': item['name'], 'version': item['version'], 'id': item['id'], 'group': item['group'],
+                 'assets': item['assets']})
         return components
 
-    def _components_size(self,component) -> str:
+    def _components_size(self, component: dict) -> str:
+        """
+        Aggregate size of all assets of a nexus component
+        :param component:
+        :return: the size in bytes
+        """
         size = 0
         with FuturesSession() as session:
 
             futures = []
             for asset in component['assets']:
-                futures.append(session.head(asset['downloadUrl'],auth=self.cred))
-                #response = requests.head(asset['downloadUrl'],auth=self.cred)
+                futures.append(session.head(asset['downloadUrl'], auth=self.cred))
             for future in as_completed(futures):
                 resp = future.result()
                 size += int(resp.headers['Content-Length'])
         return size
 
-    def delete_all_components(self):
+    def delete_all_components(self) -> None:
         """
-        Supprime tous les composant présents dans le repository
-        :return:
+        Delette all components in the registry
+        :return: None
         """
         components = self._get_components_as_list(self._get_all_components)
         self._delete_components_in_array(components)
 
-    def delete_component(self, id):
+    def _delete_component(self, id: str):
         if not self.dryRun:
             response = requests.delete(self.nexus_url + "v1/components/" + id, auth=self.cred)
             response.raise_for_status()
 
-    def clean(self,version_pattern=None):
-        if version_pattern:
-            self._delete_components_in_array(self._filter_components_by_version_pattern(self._get_components_as_list(self._get_all_components),version_pattern))
+    def delete_all_component_by_version_pattern(self, version_pattern: str):
+        self._delete_components_in_array(
+            self._filter_components_by_version_pattern(self._get_components_as_list(self._get_all_components),
+                                                       version_pattern))
 
-
-    def _delete_components_in_array(self, components_array):
+    def _delete_components_in_array(self, components: list) -> None:
+        """
+        If dryrun is True, only display which component should be deleted
+        :param components: component to delete
+        :return: None
+        """
         total_size = 0
         console = Console()
-        for comp in components_array:
-            total_size+=self._components_size(comp)
+        for comp in components:
+            total_size += self._components_size(comp)
             if self.dryRun:
-                console.print("deleting " + comp['name'] + ':' + comp['version']+' '+size(self._components_size(comp)))
+                console.print(
+                    "deleting " + comp['name'] + ':' + comp['version'] + ' ' + size(self._components_size(comp)))
             else:
-                self.delete_component(comp['id'])
-        console.print("Free memory :[bold]"+size(total_size)+"[/bold]")
+                self._delete_component(comp['id'])
+        console.print("Free memory :[bold]" + size(total_size) + "[/bold]")
 
     def delete_all_components_by_version(self, version):
-        self._delete_components_in_array(self._get_components_as_list(self._search_components,version=version))
+        self._delete_components_in_array(self._get_components_as_list(self._search_components, version=version))
 
-    def _filter_components_by_version_pattern(self, versions, pattern):
+    def _filter_components_by_version_pattern(self, components: list, pattern: str):
         """
-        Filtre les versions pour ne retourner que celles qui doivent être supprimée
 
-        :param versions: liste de versions à filtrer
-        :param pattern: pattern à matcher
-        :return: liste de version a supprimer
+        :param components: componenet list to filter
+        :param pattern: pattern to match
+        :return: component list that matchthe pattern
         """
 
         patched_pattern = "^" + pattern
@@ -161,9 +169,9 @@ class NexusHouseKeeper:
             if m is not None:
                 return component
 
-        return [v for v in map(matcher, versions) if v is not None]
+        return [v for v in map(matcher, components) if v is not None]
 
-    def keep_lasts_versions(self,last_version_count)->None:
+    def keep_lasts_versions(self, last_version_count: int) -> None:
         """
         Conserve les dernière versions des artefacts
         :param last_version_count:
@@ -174,41 +182,33 @@ class NexusHouseKeeper:
         artefact_to_delete = [item for item in all_artefacts if item not in artefact_to_keep]
         self._delete_components_in_array(artefact_to_delete)
 
-
-    def _get_last_versions(self, components, last_version_count):
+    def _get_last_versions(self, components: list, last_version_count: int):
         for component in components:
             self._get_most_recent_artefact_for_version(component)
 
-       #def get_key(item):
-       #     return item[0][1]+"-"+item[0][0]
-
         version_by_component = {}
 
-        for k,v in self.versions_cache.items():
+        for k, v in self.versions_cache.items():
             if k[0] not in version_by_component:
-                version_by_component[k[0]] = {k[1]:v["component"]}
+                version_by_component[k[0]] = {k[1]: v["component"]}
             else:
-                version_by_component[k[0]][k[1]]=v["component"]
+                version_by_component[k[0]][k[1]] = v["component"]
 
         print(version_by_component)
         to_return = []
-        for k,v in version_by_component.items():
-            to_return+=map(lambda x:x[1],sorted(v.items(), reverse=True)[0:int(last_version_count)])
+        for k, v in version_by_component.items():
+            to_return += map(lambda x: x[1], sorted(v.items(), reverse=True)[0:int(last_version_count)])
 
         return to_return
-        #return list(
-            #map(lambda x: x[1]["component"], sorted(self.versions_cache.items(), reverse=True,key=get_key)[0:int(last_version_count)]))
 
+    # TODO mettre version_cache et _get_most_recent_artefact_for_version dans une autre classe
+    # versions_cache = {}  # exemple : {(group:name,2.1.1):{"date":date,"version":"2.1.1-20201208.134457-2"}}
 
-    #TODO mettre version_cache et _get_most_recent_artefact_for_version dans une autre classe
-    #versions_cache = {}  # exemple : {(group:name,2.1.1):{"date":date,"version":"2.1.1-20201208.134457-2"}}
-
-
-    def _get_most_recent_artefact_for_version(self, component) -> None:
+    def _get_most_recent_artefact_for_version(self, component: dict) -> None:
         """
         Utilisé pour les snapshots pour lequel plusieurs artefacts existe pour la même version
         :param component: dict
-        :return: component: dict
+        :return: None
         """
         dategroup = self.snapshot_finder.match(component["version"])
         short_version = dategroup.group(1)
@@ -221,9 +221,8 @@ class NexusHouseKeeper:
         elif dategroup.group(1):
             self.versions_cache[key] = {"component": component}
         else:
-            print("ignore version "+component["version"]+" pour l'artefact "+component["group"] + ":" + component["name"])
-
-
+            print("ignore version " + component["version"] + " pour l'artefact " + component["group"] + ":" + component[
+                "name"])
 
 
 def main():
@@ -231,8 +230,8 @@ def main():
     parser.add_argument("-u", help="nom de l'utilisateur nexus")
     parser.add_argument("-p", help="mot de passe de l'utilisateur nexus")
     parser.add_argument("-r", help="repository")
-    parser.add_argument("-s", help="affiche l'ensemble des versions pour chaque composants",action="store_true")
-    parser.add_argument("--nexus-url",help="la base path de l'api nexus")
+    parser.add_argument("-s", help="affiche l'ensemble des versions pour chaque composants", action="store_true")
+    parser.add_argument("--nexus-url", help="la base path de l'api nexus")
     parser.add_argument("--version-match",
                         help="supprime tous les artefacts dont le numéro de version réponds à l'expression")
     parser.add_argument("--version",
@@ -242,12 +241,12 @@ def main():
     parser.add_argument("--dryrun",
                         help="n'execute pas réellement la requête mais affiche les composants potentiellement effacés",
                         action="store_true")
-    #TODO rendre des paramètre obligatoire
+    # TODO rendre des paramètre obligatoire
     args = parser.parse_args()
 
     nexus = NexusHouseKeeper(args.u, args.p, args.nexus_url, args.r, args.dryrun)
     if args.version_match:
-        nexus.clean(version_pattern=args.version_match)
+        nexus.delete_all_component_by_version_pattern(version_pattern=args.version_match)
     elif args.s:
         nexus.show_all_components()
     elif args.l:
