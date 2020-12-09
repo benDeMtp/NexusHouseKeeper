@@ -6,6 +6,9 @@ import re
 import datetime
 from rich.console import Console
 from rich.table import Column, Table
+from hurry.filesize import size
+from requests_futures.sessions import FuturesSession
+from concurrent.futures import as_completed
 
 class NexusHouseKeeper:
     cred = None
@@ -57,7 +60,6 @@ class NexusHouseKeeper:
             response = fun(token=response.json()['continuationToken'],**args)
             components += (self._fill_tmp_array_from_json(response.json()))
             i=i+1
-            print("query")
         print(str(i)+" queries")
         return components
 
@@ -65,7 +67,10 @@ class NexusHouseKeeper:
         components = self._get_components_as_list(self._get_all_components)
         aggregates = {}
         regex = re.compile("^(.*)-"+self.date_pattern+"-?\d*")
+        total_size = 0
         for x in components:
+            comp_size = self._components_size(x)
+            total_size += comp_size
             key = x["group"]+":"+x["name"]
             match = regex.match(x["version"])
             #Check if snapshot
@@ -73,10 +78,10 @@ class NexusHouseKeeper:
             if match.group(2):
                 version+="-SNAPSHOT"
             if key in aggregates:
-                aggregates[key].add(version)
+                aggregates[key].add(version+" ["+size(comp_size)+"]")
             else:
                 aggregates[key]=set()
-                aggregates[key].add(version)
+                aggregates[key].add(version+" ["+size(comp_size)+"]")
 
         console = Console()
         table = Table(show_header=True, header_style="bold magenta")
@@ -85,15 +90,27 @@ class NexusHouseKeeper:
         for k,v in aggregates.items():
             table.add_row(k,", ".join(v))
         console.print(table)
-        console.print("[red]* Pour supprimer une version SNAPSHOT il ne faut pas suffixer par \"SNAPSHOT\"[/red]")
-        console.print("[red] Exemple : python NexusHouseKeeper.py -u USER -p PASS -r my-maven-snapshots --version-match 1.1 [/red]")
+        console.print("Total size : "+size(total_size))
 
     def _fill_tmp_array_from_json(self, json) -> list:
         components = []
         for item in json['items']:
             #print(item)
-            components.append({'name': item['name'], 'version': item['version'], 'id': item['id'],'group':item['group']})
+            components.append({'name': item['name'], 'version': item['version'], 'id': item['id'],'group':item['group'],'assets':item['assets']})
         return components
+
+    def _components_size(self,component) -> str:
+        size = 0
+        with FuturesSession() as session:
+
+            futures = []
+            for asset in component['assets']:
+                futures.append(session.head(asset['downloadUrl'],auth=self.cred))
+                #response = requests.head(asset['downloadUrl'],auth=self.cred)
+            for future in as_completed(futures):
+                resp = future.result()
+                size += int(resp.headers['Content-Length'])
+        return size
 
     def delete_all_components(self):
         """
@@ -114,11 +131,15 @@ class NexusHouseKeeper:
 
 
     def _delete_components_in_array(self, components_array):
+        total_size = 0
+        console = Console()
         for comp in components_array:
+            total_size+=self._components_size(comp)
             if self.dryRun:
-                print("deleting " + comp['name'] + ':' + comp['version'])
+                console.print("deleting " + comp['name'] + ':' + comp['version']+' '+size(self._components_size(comp)))
             else:
                 self.delete_component(comp['id'])
+        console.print("Free memory :[bold]"+size(total_size)+"[/bold]")
 
     def delete_all_components_by_version(self, version):
         self._delete_components_in_array(self._get_components_as_list(self._search_components,version=version))
