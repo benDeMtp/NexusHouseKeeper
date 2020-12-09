@@ -7,9 +7,6 @@ import datetime
 from rich.console import Console
 from rich.table import Column, Table
 
-#base_uri = "http://localhost:8096/service/rest/"
-
-
 class NexusHouseKeeper:
     cred = None
     nexus_url = None
@@ -27,7 +24,7 @@ class NexusHouseKeeper:
         self.dryRun = dryRun
         self.versions_cache = {}
 
-    def get_components(self, token=None):
+    def _get_all_components(self, token=None):
         params = {'repository': self.repository}
         if token:
             params['continuationToken'] = token
@@ -36,16 +33,36 @@ class NexusHouseKeeper:
         response.raise_for_status()
         return response
 
-    def _get_components_as_list(self) -> list:
-        response = self.get_components()
+    def _search_components(self,token=None,name=None,group=None,version=None):
+        params = {'repository': self.repository}
+        if token:
+            params['continuationToken'] = token
+        if name:
+            params['maven.artifactId']=name
+        if group:
+            params['maven.groupId'] = group
+        if version:
+            params['maven.baseVersion'] = version
+        response = requests.get(self.nexus_url + "v1/search", auth=self.cred,
+                                params=params, headers={'accept': 'application/json'})
+        response.raise_for_status()
+        print(response.json())
+        return response
+
+    def _get_components_as_list(self,fun,**args) -> list:
+        response = fun(**args)
+        i=1
         components = self._fill_tmp_array_from_json(response.json())
         while 'continuationToken' in response.json() and response.json()['continuationToken']:
-            response = self.get_components(response.json()['continuationToken'])
+            response = fun(token=response.json()['continuationToken'],**args)
             components += (self._fill_tmp_array_from_json(response.json()))
+            i=i+1
+            print("query")
+        print(str(i)+" queries")
         return components
 
-    def show_components(self) -> None:
-        components = self._get_components_as_list()
+    def show_all_components(self) -> None:
+        components = self._get_components_as_list(self._get_all_components)
         aggregates = {}
         regex = re.compile("^(.*)-"+self.date_pattern+"-?\d*")
         for x in components:
@@ -83,18 +100,17 @@ class NexusHouseKeeper:
         Supprime tous les composant présents dans le repository
         :return:
         """
-        components = self._get_components_as_list()
+        components = self._get_components_as_list(self._get_all_components)
         self._delete_components_in_array(components)
 
     def delete_component(self, id):
         if not self.dryRun:
-            response = requests.delete(base_uri + "v1/components/" + id, auth=self.cred)
+            response = requests.delete(self.nexus_url + "v1/components/" + id, auth=self.cred)
             response.raise_for_status()
 
-    def clean(self,version_pattern=None,last_versions=None):
+    def clean(self,version_pattern=None):
         if version_pattern:
-            components = self._get_components_as_list()
-            self._delete_components_in_array(self._filter_components_by_version_pattern(components,version_pattern))
+            self._delete_components_in_array(self._filter_components_by_version_pattern(self._get_components_as_list(self._get_all_components),version_pattern))
 
 
     def _delete_components_in_array(self, components_array):
@@ -104,7 +120,8 @@ class NexusHouseKeeper:
             else:
                 self.delete_component(comp['id'])
 
-
+    def delete_all_components_by_version(self, version):
+        self._delete_components_in_array(self._get_components_as_list(self._search_components,version=version))
 
     def _filter_components_by_version_pattern(self, versions, pattern):
         """
@@ -131,7 +148,7 @@ class NexusHouseKeeper:
         :param last_version_count:
         """
 
-        all_artefacts = self._get_components_as_list()
+        all_artefacts = self._get_components_as_list(self._get_all_components)
         artefact_to_keep = self._get_last_versions(all_artefacts, last_version_count)
         artefact_to_delete = [item for item in all_artefacts if item not in artefact_to_keep]
         self._delete_components_in_array(artefact_to_delete)
@@ -187,6 +204,7 @@ class NexusHouseKeeper:
 
 
 
+
 def main():
     parser = argparse.ArgumentParser(description="Script permetant de faire des opérations sur des composants nexus")
     parser.add_argument("-u", help="nom de l'utilisateur nexus")
@@ -196,6 +214,8 @@ def main():
     parser.add_argument("--nexus-url",help="la base path de l'api nexus")
     parser.add_argument("--version-match",
                         help="supprime tous les artefacts dont le numéro de version réponds à l'expression")
+    parser.add_argument("--version",
+                        help="delete all components with this exact version")
     parser.add_argument("-l",
                         help="conserve uniquement les n dernière version. Ne fonctionne uniquement qu'avec les versions au format X.Y.Z")
     parser.add_argument("--dryrun",
@@ -208,9 +228,11 @@ def main():
     if args.version_match:
         nexus.clean(version_pattern=args.version_match)
     elif args.s:
-        nexus.show_components()
+        nexus.show_all_components()
     elif args.l:
         nexus.keep_lasts_versions(args.l)
+    elif args.version:
+        nexus.delete_all_components_by_version(args.version)
 
 
 if __name__ == "__main__":
