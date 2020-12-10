@@ -1,11 +1,10 @@
-from pyclbr import _main
 import requests
 from requests.auth import HTTPBasicAuth
 import argparse
 import re
 import datetime
 from rich.console import Console
-from rich.table import Column, Table
+from rich.table import Table
 from hurry.filesize import size
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
@@ -227,11 +226,11 @@ class NexusHouseKeeper:
 
 def main():
     parser = argparse.ArgumentParser(description="Script permetant de faire des opérations sur des composants nexus")
-    parser.add_argument("-u", help="nom de l'utilisateur nexus")
-    parser.add_argument("-p", help="mot de passe de l'utilisateur nexus")
-    parser.add_argument("-r", help="repository")
+    parser.add_argument("-u", help="nom de l'utilisateur nexus",required=True)
+    parser.add_argument("-p", help="mot de passe de l'utilisateur nexus",required=True)
+    parser.add_argument("-r", help="repository",required=True)
     parser.add_argument("-s", help="affiche l'ensemble des versions pour chaque composants", action="store_true")
-    parser.add_argument("--nexus-url", help="la base path de l'api nexus")
+    parser.add_argument("--nexus-url", help="la base path de l'api nexus",required=True)
     parser.add_argument("--version-match",
                         help="supprime tous les artefacts dont le numéro de version réponds à l'expression")
     parser.add_argument("--version",
