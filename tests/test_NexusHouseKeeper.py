@@ -1,7 +1,30 @@
 import unittest
-from NexusHouseKeeper import *
+from unittest.mock import MagicMock
+from nexushousekeeper.NexusHouseKeeper import NexusHouseKeeper
 
 class NexusHouseKeeperTest(unittest.TestCase):
+
+
+    def test_regex_should_match_release_version(self):
+        #Given
+        nexus_house_keeper = NexusHouseKeeper('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper._components_size = MagicMock(return_value=10)
+        components = [{'name': 'up', 'version': '2.0-20201208.121756-1', 'id': '1', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'up', 'version': '2.1.1-20201208.121756-1', 'id': '2', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'up', 'version': '2.1.1-20201208.134457-2', 'id': '3', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'up', 'version': '2.5', 'id': '4', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'ub', 'version': '2.0-20201208.121757-1', 'id': '5', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'ub', 'version': '2.4.1-20201208.134457-2', 'id': '6', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'ub', 'version': '2.6', 'id': '7', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'ub', 'version': '2.1.1-20201208.121756-1', 'id': '8', 'group':'kawamind', 'group':'kawamind'},
+                      {'name': 'ub', 'version': 'feature-foo28-20201208.121756-1', 'id': '9', 'group':'kawamind', 'group':'kawamind'}]
+        #When
+        aggregates_components,total_size = nexus_house_keeper.aggregates_components(components)
+
+        #Then
+        self.assertEqual(90,total_size)
+        print(aggregates_components)
+        self.assertDictEqual({'kawamind:up': {'2.0-SNAPSHOT [10B]', '2.1.1-SNAPSHOT [10B]','2.5 [10B]'}, 'kawamind:ub': {'2.0-SNAPSHOT [10B]', 'feature-foo28-SNAPSHOT [10B]', '2.1.1-SNAPSHOT [10B]', '2.4.1-SNAPSHOT [10B]','2.6 [10B]'}},aggregates_components)
 
     def test_filter_components_by_version_pattern_must_return_version_matching_pattern(self):
         #Given

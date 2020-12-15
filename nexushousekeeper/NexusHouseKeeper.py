@@ -20,6 +20,8 @@ class NexusHouseKeeper:
     date_pattern = "(\d{8}\.\d{6})"
     snapshot_finder = re.compile(version_pattern + "-?" + date_pattern + "?-?\d*")
 
+
+
     def __init__(self, user, password, nexus_url, repository, dryRun=False):
         self.cred = HTTPBasicAuth(user, password)
         self.nexus_url = nexus_url
@@ -61,7 +63,26 @@ class NexusHouseKeeper:
 
     def show_all_components(self) -> None:
         components = self._get_components_as_list(self._get_all_components)
+        aggregates_components,total_size = self.aggregates_components(components)
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Name", style="dim")
+        table.add_column("Versions")
+        for k, v in aggregates_components.items():
+            table.add_row(k, ", ".join(v))
+        console.print(table)
+        console.print("Total size : " + size(total_size))
+
+    def aggregates_components(self, components :list) -> tuple:
         aggregates = {}
+
+        def _add_to_aggregates(key,version,comp_size):
+            if key in aggregates:
+                aggregates[key].add(version + " [" + size(comp_size) + "]")
+            else:
+                aggregates[key] = set()
+                aggregates[key].add(version + " [" + size(comp_size) + "]")
+
         regex = re.compile("^(.*)-" + self.date_pattern + "-?\d*")
         total_size = 0
         for x in components:
@@ -69,24 +90,19 @@ class NexusHouseKeeper:
             total_size += comp_size
             key = x["group"] + ":" + x["name"]
             match = regex.match(x["version"])
-            # Check if snapshot
-            version = "[bold]" + match.group(1) + "[/bold]"
-            if match.group(2):
-                version += "-SNAPSHOT"
-            if key in aggregates:
-                aggregates[key].add(version + " [" + size(comp_size) + "]")
+            if match:
+                # Check if snapshot
+                version = match.group(1)
+                if match.group(2):
+                    version += "-SNAPSHOT"
+                _add_to_aggregates(key,version,comp_size)
             else:
-                aggregates[key] = set()
-                aggregates[key].add(version + " [" + size(comp_size) + "]")
+                if re.compile("^[0-9\.]*").match(x["version"]):
+                    _add_to_aggregates(key,x["version"],comp_size)
+                else:
+                    print(x["version"]+" ignored")
 
-        console = Console()
-        table = Table(show_header=True, header_style="bold magenta")
-        table.add_column("Name", style="dim")
-        table.add_column("Versions")
-        for k, v in aggregates.items():
-            table.add_row(k, ", ".join(v))
-        console.print(table)
-        console.print("Total size : " + size(total_size))
+        return aggregates,total_size
 
     def _fill_tmp_array_from_json(self, json) -> list:
         components = []
@@ -97,7 +113,7 @@ class NexusHouseKeeper:
                  'assets': item['assets']})
         return components
 
-    def _components_size(self, component: dict) -> str:
+    def _components_size(self, component: dict) -> int:
         """
         Aggregate size of all assets of a nexus component
         :param component:

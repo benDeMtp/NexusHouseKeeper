@@ -12,13 +12,13 @@ pip install -r requirements.txt
 
 ### Print help :
 ```
-python3 NexusHouseKeeper.py -h
+python3 -m nexushousekeeper.NexusHouseKeeper -h
 ```
 
 ### Remove all components with versions matching a pattern
 
 ``
-python3 NexusHouseKeeper.py -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1.*
+python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1.*
 ``
 
 This command remove all versions beginning with 1.1
@@ -26,7 +26,7 @@ This command remove all versions beginning with 1.1
 ### Remove all components with the exact version
 
 ``
-python3 NexusHouseKeeper.py -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1-SNAPSHOT
+python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1-SNAPSHOT
 ``
 
 This command remove all component with version 1.1-SNAPSHOT
@@ -34,11 +34,11 @@ This command remove all component with version 1.1-SNAPSHOT
 ### dry run
 Don't perform deletion but display which element should be deleted
 ``
-python3 NexusHouseKeeper.py -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1.* --dryrun
+python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1.* --dryrun
 ``
 
 ### display each version for each components
 
 ``
-python3 NexusHouseKeeper.py -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL -s
+python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL -s
 ``
