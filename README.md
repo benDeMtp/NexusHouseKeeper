@@ -42,3 +42,15 @@ python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r 
 ``
 python3 -m nexushousekeeper.NexusHouseKeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL -s
 ``
+
+## Build Project
+``
+python3 setup.py sdist bdist_wheel
+``
+
+## Deploy to pypi
+* testpypi
+
+``
+python3 -m twine upload --repository testpypi dist/*
+``
