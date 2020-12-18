@@ -1,13 +1,13 @@
 import unittest
 from unittest.mock import MagicMock
-from nexushousekeeper.nexushousekeeper import NexusHouseKeeper
+from nexushousekeeper.mvnrepositoryhandler import MvnRepositoryHandler
 
 
 class NexusHouseKeeperTest(unittest.TestCase):
 
     def test_regex_should_match_release_version(self):
         # Given
-        nexus_house_keeper = NexusHouseKeeper('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
         nexus_house_keeper._components_size = MagicMock(return_value=10)
         components = [{'name': 'module1', 'version': '2.0-20201208.121756-1', 'id': '1', 'group': 'kawamind',
                        'group': 'kawamind'},
@@ -45,7 +45,7 @@ class NexusHouseKeeperTest(unittest.TestCase):
         pattern_to_delete = "1.*"
         expected = [{'name': 'module1', 'version': '1.0-20201208.121756-1', 'id': '1'},
                     {'name': 'module2', 'version': '1.1-20201208.121756-1', 'id': '2'}]
-        nexus_house_keeper = NexusHouseKeeper('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
 
         # When
         result = nexus_house_keeper._filter_components_by_version_pattern(components, pattern_to_delete)
@@ -82,7 +82,7 @@ class NexusHouseKeeperTest(unittest.TestCase):
                     {'name': 'module2', 'version': '2.6', 'id': '7', 'group': 'kawamind'},
                     {'name': 'module2', 'version': '2.4.1-20201208.134457-2', 'id': '6', 'group': 'kawamind'},
                     {'name': 'module2', 'version': '2.1.1-20201208.121756-1', 'id': '8', 'group': 'kawamind'}]
-        nexus_house_keeper = NexusHouseKeeper('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
         # When
         result = nexus_house_keeper._get_last_versions(components, 3)
         print(result)
@@ -111,7 +111,7 @@ class NexusHouseKeeperTest(unittest.TestCase):
                     {'name': 'module2', 'version': '2.5', 'id': '8', 'group': 'kawamind'}
                     ]
 
-        nexus_house_keeper2 = NexusHouseKeeper('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper2 = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
         # When
         for comp in components:
             nexus_house_keeper2._get_most_recent_artefact_for_version(comp)
