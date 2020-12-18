@@ -1,3 +1,33 @@
+[tool.poetry]
+name = "nexushousekeeper"
+version = "0.0.4.dev2"
+description = "A module to maintain a nexus directory clean"
+authors = ["Benjamin Raimondi <benjamin.raimondi@gmail.com>"]
+license = "MIT"
+keywords = ["nexus", "nexus3"]
+repository = "https://github.com/benDeMtp/NexusHouseKeeper"
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent"
+]
+readme = "README.md"
+
+packages = [
+    { include="nexushousekeeper", from="." },
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+rich = "9.4.0"
+"hurry.filesize" = "0.9"
+requests = "2.25.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.1"
+
+[tool.poetry.scripts]
+nexushousekeeper = 'nexushousekeeper.nexushousekeeper:main'
+
 [build-system]
-requires = ["setuptools","wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

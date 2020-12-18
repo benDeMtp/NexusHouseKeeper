@@ -19,9 +19,9 @@ class NexusHouseKeeper:
     repository = None
     dryRun = None
 
-    version_pattern = "(\d*\.?\d*\.?\d*)"
-    date_pattern = "(\d{8}\.\d{6})"
-    snapshot_finder = re.compile(version_pattern + "-?" + date_pattern + "?-?\d*")
+    version_pattern = r'(\d*\.?\d*\.?\d*)'
+    date_pattern = r"(\d{8}\.\d{6})"
+    snapshot_finder = re.compile(version_pattern + r"-?" + date_pattern + r"?-?\d*")
 
     def __init__(self, user, password, nexus_url, repository, dry_run=False, parallelism=20):
         self.cred = HTTPBasicAuth(user, password)
@@ -106,12 +106,12 @@ class NexusHouseKeeper:
                     version += "-SNAPSHOT"
                 _add_to_aggregates(key, version, comp_size)
             else:
-                if re.compile("^[0-9\.]*").match(x["version"]):
+                if re.compile(r"^[0-9\.]*").match(x["version"]):
                     _add_to_aggregates(key, x["version"], comp_size)
                 else:
                     print(x["version"] + " ignored")
 
-        regex = re.compile("^(.*)-" + self.date_pattern + "-?\d*")
+        regex = re.compile(r"^(.*)-" + self.date_pattern + r"-?\d*")
 
         with Progress() as progress:
             ceil = math.ceil(len(components) / self.parallelism)
