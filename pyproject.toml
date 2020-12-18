@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nexushousekeeper"
-version = "0.0.4.dev2"
+version = "0.0.4.dev3"
 description = "A module to maintain a nexus directory clean"
 authors = ["Benjamin Raimondi <benjamin.raimondi@gmail.com>"]
 license = "MIT"
@@ -21,6 +21,7 @@ python = "^3.6"
 rich = "9.4.0"
 "hurry.filesize" = "0.9"
 requests = "2.25.0"
+requests_futures = "1.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"
