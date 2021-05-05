@@ -118,8 +118,6 @@ class MvnRepositoryHandler:
 
             for batch in self.batch_generator(components, self.parallelism):
                 tasks = [_handle_components(x, with_size) for x in batch]
-                # for x in components:
-                #    _handle_components(x)
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(asyncio.gather(*tasks))
                 progress.update(gather_data, advance=1)
@@ -258,7 +256,7 @@ class MvnRepositoryHandler:
 
     def _get_most_recent_artefact_for_version(self, component: dict) -> None:
         """
-        Utilisé pour les snapshots pour lequel plusieurs artefacts existe pour la même version
+        Utilisé pour les snapshots pour lesquels plusieurs artefacts existent pour la même version
         :param component: dict
         :return: None
         """
