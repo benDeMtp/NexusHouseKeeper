@@ -31,7 +31,7 @@ class NexusHouseKeeperTest(unittest.TestCase):
         # Then
         self.assertEqual(90, total_size)
         print(aggregates_components)
-        self.assertDictEqual({'kawamind:module1': {'2.0-SNAPSHOT [10B]', '2.1.1-SNAPSHOT [10B]', '2.5 [10B]'},
+        self.assertDictEqual({'kawamind:module1': {'2.0-SNAPSHOT [10B]', '2.1.1-SNAPSHOT [20B]', '2.5 [10B]'},
                               'kawamind:module2': {'2.0-SNAPSHOT [10B]', 'feature-foo28-SNAPSHOT [10B]',
                                                    '2.1.1-SNAPSHOT [10B]', '2.4.1-SNAPSHOT [10B]', '2.6 [10B]'}},
                              aggregates_components)
