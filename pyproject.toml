@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nexushousekeeper"
-version = "0.0.4.dev3"
+version = "0.0.4.dev4"
 description = "A module to keep a nexus directory clean"
 authors = ["Benjamin Raimondi <benjamin.raimondi@gmail.com>"]
 license = "MIT"

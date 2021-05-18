@@ -77,18 +77,19 @@ class MvnRepositoryHandler:
         self.console.print("Total size : " + size(total_size))
 
     def aggregates_components(self, components: list, with_size: bool) -> tuple:
-        aggregates = {}
+        aggregates = {} # Map as {"group:id":{"version1":size1,"version2":size2}}
         total_size = 0
 
         def _add_to_aggregates(key, version, comp_size=None):
-            size_as_string = ""
-            if comp_size:
-                size_as_string = " [" + size(comp_size) + "]"
             if key in aggregates:
-                aggregates[key].add(version + size_as_string)
+                if version in aggregates[key]:
+                    #aggregate size
+                    aggregates[key][version] += comp_size
+                else:
+                    aggregates[key][version] = comp_size
             else:
-                aggregates[key] = set()
-                aggregates[key].add(version + size_as_string)
+                aggregates[key] = {}
+                aggregates[key][version] = comp_size
 
         async def _handle_components(x, with_size):
             comp_size = None
@@ -122,7 +123,14 @@ class MvnRepositoryHandler:
                 loop.run_until_complete(asyncio.gather(*tasks))
                 progress.update(gather_data, advance=1)
 
-        return aggregates, total_size
+
+        aggregate_as_string = {} # {"group:id":{"version1 [size1],"version2 [size2]"}}
+        for k,v in aggregates.items():
+            for k2,v2 in v.items():
+                if k not in aggregate_as_string:
+                    aggregate_as_string[k] = set()
+                aggregate_as_string[k].add(k2+" [" + size(v2) + "]")
+        return aggregate_as_string, total_size
 
     def _fill_tmp_array_from_json(self, json) -> list:
         components = []
