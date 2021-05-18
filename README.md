@@ -28,7 +28,7 @@ This command remove all versions beginning with 1.1
 ### Remove all components with the exact version
 
 ``
-nexushousekeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version-match 1.1-SNAPSHOT
+nexushousekeeper -u NEXUS_USER -p NEXUS_PASSWORD -r REPOSITORY --nexus-url NEXUS_URL --version 1.1-SNAPSHOT
 ``
 
 This command remove all components with version 1.1-SNAPSHOT
