@@ -1,5 +1,5 @@
 import argparse
-from mvnrepositoryhandler import MvnRepositoryHandler
+from .mvnrepositoryhandler import MvnRepositoryHandler
 
 
 def main():
