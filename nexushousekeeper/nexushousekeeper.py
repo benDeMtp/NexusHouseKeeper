@@ -1,6 +1,7 @@
 import argparse
 from mvnrepositoryhandler import MvnRepositoryHandler
 
+
 def main():
     parser = argparse.ArgumentParser(description="Script permetant de faire des opérations sur des composants nexus")
     parser.add_argument("-u", help="nom de l'utilisateur nexus", required=True)
@@ -22,7 +23,7 @@ def main():
                         help="number of parallel tasks (default 20)", default=20)
     parser.add_argument("--no-size",
                         help="don't grab size of each object", action="store_false", default=True)
-    # TODO rendre des paramètre obligatoire
+    # TODO make some parameters mandatory
     args = parser.parse_args()
 
     nexus = MvnRepositoryHandler(args.u, args.p, args.nexus_url, args.r, args.dryrun, int(args.parallel))
