@@ -77,13 +77,13 @@ class MvnRepositoryHandler:
         self.console.print("Total size : " + size(total_size))
 
     def aggregates_components(self, components: list, with_size: bool) -> tuple:
-        aggregates = {} # Map as {"group:id":{"version1":size1,"version2":size2}}
+        aggregates = {}  # Map as {"group:id":{"version1":size1,"version2":size2}}
         total_size = 0
 
         def _add_to_aggregates(key, version, comp_size=None):
             if key in aggregates:
                 if version in aggregates[key]:
-                    #aggregate size
+                    # aggregate size
                     aggregates[key][version] += comp_size
                 else:
                     aggregates[key][version] = comp_size
@@ -123,16 +123,16 @@ class MvnRepositoryHandler:
                 loop.run_until_complete(asyncio.gather(*tasks))
                 progress.update(gather_data, advance=1)
 
-
-        aggregate_as_string = {} # {"group:id":{"version1 [size1],"version2 [size2]"}}
-        for k,v in aggregates.items():
-            for k2,v2 in v.items():
+        aggregate_as_string = {}  # {"group:id":{"version1 [size1],"version2 [size2]"}}
+        for k, v in aggregates.items():
+            for k2, v2 in v.items():
                 if k not in aggregate_as_string:
                     aggregate_as_string[k] = set()
-                aggregate_as_string[k].add(k2+" [" + size(v2) + "]")
+                aggregate_as_string[k].add(k2 + " [" + size(v2) + "]")
         return aggregate_as_string, total_size
 
-    def _fill_tmp_array_from_json(self, json) -> list:
+    @staticmethod
+    def _fill_tmp_array_from_json(json) -> list:
         components = []
         for item in json['items']:
             # print(item)
@@ -231,7 +231,7 @@ class MvnRepositoryHandler:
 
     def keep_lasts_versions(self, last_version_count: int) -> None:
         """
-        Conserve les dernière versions des artefacts
+        Conserve les dernières versions des artefacts
         :param last_version_count:
         """
 
