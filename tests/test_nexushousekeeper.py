@@ -4,29 +4,30 @@ from nexushousekeeper.mvnrepositoryhandler import MvnRepositoryHandler
 
 
 class NexusHouseKeeperTest(unittest.TestCase):
+    components = [{'name': 'module1', 'version': '2.0-20201208.121756-1', 'id': '1', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module1', 'version': '2.1.1-20201208.121756-1', 'id': '2', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module1', 'version': '2.1.1-20201208.134457-2', 'id': '3', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module1', 'version': '2.5', 'id': '4', 'group': 'kawamind', 'group': 'kawamind'},
+                  {'name': 'module2', 'version': '2.0-20201208.121757-1', 'id': '5', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module2', 'version': '2.4.1-20201208.134457-2', 'id': '6', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module2', 'version': '2.6', 'id': '7', 'group': 'kawamind', 'group': 'kawamind'},
+                  {'name': 'module2', 'version': '2.1.1-20201208.121756-1', 'id': '8', 'group': 'kawamind',
+                   'group': 'kawamind'},
+                  {'name': 'module2', 'version': 'feature-foo28-20201208.121756-1', 'id': '9', 'group': 'kawamind',
+                   'group': 'kawamind'}]
 
     def test_regex_should_match_release_version(self):
         # Given
         nexus_house_keeper = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
         nexus_house_keeper._components_size = MagicMock(return_value=10)
-        components = [{'name': 'module1', 'version': '2.0-20201208.121756-1', 'id': '1', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module1', 'version': '2.1.1-20201208.121756-1', 'id': '2', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module1', 'version': '2.1.1-20201208.134457-2', 'id': '3', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module1', 'version': '2.5', 'id': '4', 'group': 'kawamind', 'group': 'kawamind'},
-                      {'name': 'module2', 'version': '2.0-20201208.121757-1', 'id': '5', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module2', 'version': '2.4.1-20201208.134457-2', 'id': '6', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module2', 'version': '2.6', 'id': '7', 'group': 'kawamind', 'group': 'kawamind'},
-                      {'name': 'module2', 'version': '2.1.1-20201208.121756-1', 'id': '8', 'group': 'kawamind',
-                       'group': 'kawamind'},
-                      {'name': 'module2', 'version': 'feature-foo28-20201208.121756-1', 'id': '9', 'group': 'kawamind',
-                       'group': 'kawamind'}]
+
         # When
-        aggregates_components, total_size = nexus_house_keeper.aggregates_components(components, True)
+        aggregates_components, total_size = nexus_house_keeper.aggregates_components(self.components, True)
 
         # Then
         self.assertEqual(90, total_size)
@@ -35,6 +36,26 @@ class NexusHouseKeeperTest(unittest.TestCase):
                               'kawamind:module2': {'2.0-SNAPSHOT [10B]', 'feature-foo28-SNAPSHOT [10B]',
                                                    '2.1.1-SNAPSHOT [10B]', '2.4.1-SNAPSHOT [10B]', '2.6 [10B]'}},
                              aggregates_components)
+
+    def test_aggregates_version_should_produce_dict_with_versions_and_size(self):
+        # Given
+        nexus_house_keeper = MvnRepositoryHandler('user', 'password', 'mock://testuri', 'maven-repo')
+        nexus_house_keeper._components_size = MagicMock(return_value=10)
+
+        # When
+        aggregates_versions, total_size = nexus_house_keeper.aggregates_versions(self.components, True)
+
+        # Then
+        self.assertEqual(90, total_size)
+        print(aggregates_versions)
+        self.assertDictEqual({'2.0-SNAPSHOT': 20,
+                              '2.1.1-SNAPSHOT': 30,
+                              '2.4.1-SNAPSHOT': 10,
+                              '2.5': 10,
+                              '2.6': 10,
+                              'feature-foo28-SNAPSHOT': 10
+                              },
+                             aggregates_versions)
 
     def test_filter_components_by_version_pattern_must_return_version_matching_pattern(self):
         # Given

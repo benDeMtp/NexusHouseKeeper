@@ -18,6 +18,9 @@ class MvnRepositoryHandler:
     repository = None
     dryRun = None
 
+    aggregates: str = None
+    total_size: int = None
+
     version_pattern = r'(\d*\.?\d*\.?\d*)'
     date_pattern = r"(\d{8}\.\d{6})"
     snapshot_finder = re.compile(version_pattern + r"-?" + date_pattern + r"?-?\d*")
@@ -65,8 +68,14 @@ class MvnRepositoryHandler:
         return components
 
     def show_all_components(self, with_size=True) -> None:
+        """
+        Display a table with all components
+        :param with_size:
+        :return: None
+        """
         components = self._get_components_as_list(self._get_all_components)
         aggregates_components, total_size = self.aggregates_components(components, with_size)
+        aggregates_version, total_size2 = self.aggregates_versions(components, with_size)
 
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Name", style="dim")
@@ -74,63 +83,86 @@ class MvnRepositoryHandler:
         for k, v in aggregates_components.items():
             table.add_row(k, ", ".join(v))
         self.console.print(table)
+
+        versions_table = Table(show_header=True, header_style="bold magenta")
+        versions_table.add_column("Versions")
+        versions_table.add_column("Size")
+        for version, version_size in aggregates_version.items():
+            versions_table.add_row(version, size(version_size))
+        self.console.print(versions_table)
+
         self.console.print("Total size : " + size(total_size))
 
+    def aggregates_versions(self, components: list, with_size: bool) -> tuple:
+        aggregates, total_size = self._get_components_size(components, size)
+        aggregates_versions = {}  # {'versions':10,'version2':15'}
+        for artefact, versions_size in aggregates.items():
+            for k, v in versions_size.items():
+                if k in aggregates_versions:
+                    aggregates_versions[k] += v
+                else:
+                    aggregates_versions[k] = v
+
+        return aggregates_versions, total_size
+
     def aggregates_components(self, components: list, with_size: bool) -> tuple:
-        aggregates = {} # Map as {"group:id":{"version1":size1,"version2":size2}}
-        total_size = 0
 
-        def _add_to_aggregates(key, version, comp_size=None):
-            if key in aggregates:
-                if version in aggregates[key]:
-                    #aggregate size
-                    aggregates[key][version] += comp_size
-                else:
-                    aggregates[key][version] = comp_size
-            else:
-                aggregates[key] = {}
-                aggregates[key][version] = comp_size
-
-        async def _handle_components(x, with_size):
-            comp_size = None
-            if with_size:
-                comp_size = await loop.run_in_executor(None, self._components_size, x)
-                nonlocal total_size
-                total_size += comp_size
-            key = x["group"] + ":" + x["name"]
-            match = regex.match(x["version"])
-            if match:
-                # Check if snapshot
-                version = match.group(1)
-                if match.group(2):
-                    version += "-SNAPSHOT"
-                _add_to_aggregates(key, version, comp_size)
-            else:
-                if re.compile(r"^[0-9\.]*").match(x["version"]):
-                    _add_to_aggregates(key, x["version"], comp_size)
-                else:
-                    print(x["version"] + " ignored")
-
-        regex = re.compile(r"^(.*)-" + self.date_pattern + r"-?\d*")
-
-        with Progress() as progress:
-            ceil = math.ceil(len(components) / self.parallelism)
-            gather_data = progress.add_task("[green]Gathering size data ....", total=ceil)
-
-            for batch in self.batch_generator(components, self.parallelism):
-                tasks = [_handle_components(x, with_size) for x in batch]
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(asyncio.gather(*tasks))
-                progress.update(gather_data, advance=1)
-
-
-        aggregate_as_string = {} # {"group:id":{"version1 [size1],"version2 [size2]"}}
-        for k,v in aggregates.items():
-            for k2,v2 in v.items():
+        aggregates, total_size = self._get_components_size(components, size)
+        aggregate_as_string = {}  # {"group:id":{"version1 [size1],"version2 [size2]"}}
+        for k, v in aggregates.items():
+            for k2, v2 in v.items():
                 if k not in aggregate_as_string:
                     aggregate_as_string[k] = set()
-                aggregate_as_string[k].add(k2+" [" + size(v2) + "]")
+                aggregate_as_string[k].add(k2 + " [" + size(v2) + "]")
         return aggregate_as_string, total_size
+
+    def _get_components_size(self, components: list, with_size: bool) -> tuple:
+        if not self.aggregates and not self.total_size:
+            self.aggregates = {}  # Map as {"group:id":{"version1":size1,"version2":size2}}
+            self.total_size = 0
+
+            def _add_to_aggregates(key, version, comp_size=None):
+                if key in self.aggregates:
+                    if version in self.aggregates[key]:
+                        # aggregate size
+                        self.aggregates[key][version] += comp_size
+                    else:
+                        self.aggregates[key][version] = comp_size
+                else:
+                    self.aggregates[key] = {}
+                    self.aggregates[key][version] = comp_size
+
+            regex = re.compile(r"^(.*)-" + self.date_pattern + r"-?\d*")
+
+            async def _handle_components(x, with_size):
+                comp_size = None
+                if with_size:
+                    comp_size = await loop.run_in_executor(None, self._components_size, x)
+                    self.total_size += comp_size
+                key = x["group"] + ":" + x["name"]
+                match = regex.match(x["version"])
+                if match:
+                    # Check if snapshot
+                    version = match.group(1)
+                    if match.group(2):
+                        version += "-SNAPSHOT"
+                    _add_to_aggregates(key, version, comp_size)
+                else:
+                    if re.compile(r"^[0-9\.]*").match(x["version"]):
+                        _add_to_aggregates(key, x["version"], comp_size)
+                    else:
+                        print(x["version"] + " ignored")
+
+            with Progress() as progress:
+                ceil = math.ceil(len(components) / self.parallelism)
+                gather_data = progress.add_task("[green]Gathering size data ....", total=ceil)
+
+                for batch in self.batch_generator(components, self.parallelism):
+                    tasks = [_handle_components(x, with_size) for x in batch]
+                    loop = asyncio.get_event_loop()
+                    loop.run_until_complete(asyncio.gather(*tasks))
+                    progress.update(gather_data, advance=1)
+        return self.aggregates, self.total_size
 
     def _fill_tmp_array_from_json(self, json) -> list:
         components = []
