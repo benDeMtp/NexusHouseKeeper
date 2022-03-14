@@ -13,6 +13,8 @@ def main():
                         help="supprime tous les artefacts dont le numéro de version réponds à l'expression")
     parser.add_argument("--version",
                         help="delete all components with this exact version")
+    parser.add_argument("--groupid",
+                        help="delete all components with this groupId, version must be set")
     parser.add_argument("-l",
                         help="conserve uniquement les n dernière version. Ne fonctionne uniquement qu'avec les "
                              "versions au format X.Y.Z")
@@ -33,6 +35,8 @@ def main():
         nexus.show_all_components(args.no_size)
     elif args.l:
         nexus.keep_lasts_versions(args.l)
+    elif args.version and args.groupid:
+        nexus._delete_components_in_array(nexus._get_components_as_list(nexus._search_components, version=args.version,group=args.groupid))
     elif args.version:
         nexus.delete_all_components_by_version(args.version)
 
